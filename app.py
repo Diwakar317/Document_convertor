@@ -1,5 +1,4 @@
 import os
-import uuid
 import logging
 from flask import Flask, request, send_file, render_template, after_this_request
 from werkzeug.utils import secure_filename
@@ -11,20 +10,27 @@ from reportlab.lib.units import inch
 from textwrap import wrap
 import pypandoc
 
+# Flask setup
 app = Flask(__name__)
+
+# Folders
 UPLOAD_FOLDER = 'uploads'
 CONVERTED_FOLDER = 'converted'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(CONVERTED_FOLDER, exist_ok=True)
 
+# Logging
 logging.basicConfig(level=logging.INFO)
 
+# Supported formats
 ALLOWED_EXTENSIONS = {'pdf', 'docx', 'txt', 'odt', 'rtf', 'md', 'html', 'htm', 'epub'}
 OUTPUT_FORMATS = {'txt', 'pdf', 'docx', 'odt', 'rtf', 'md', 'html', 'epub'}
 
+# Check if file is allowed
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+# Extract text from input file
 def extract_text(path, ext):
     ext = ext.lower()
     if ext == 'pdf':
@@ -35,12 +41,18 @@ def extract_text(path, ext):
         return '\n'.join(p.text for p in doc.paragraphs)
     elif ext in ALLOWED_EXTENSIONS:
         try:
-            return pypandoc.convert_file(path, 'plain')
+            pypandoc.get_pandoc_path()
         except OSError:
-            raise RuntimeError("Pandoc is not installed. Install from https://pandoc.org/installing.html")
+            logging.warning("Pandoc not found. Downloading...")
+            pypandoc.download_pandoc()
+        try:
+            return pypandoc.convert_file(path, 'markdown')  # Fix: Use markdown
+        except Exception as e:
+            raise RuntimeError(f"Failed to extract using pypandoc: {e}")
     else:
-        raise ValueError("Unsupported input format")
+        raise ValueError(f"Unsupported input format: {ext}")
 
+# Save text to output file format
 def save_as_format(text, out_path, fmt):
     fmt = fmt.lower()
     if fmt == 'txt':
@@ -59,10 +71,20 @@ def save_as_format(text, out_path, fmt):
                     y = height - inch
         c.save()
     elif fmt in OUTPUT_FORMATS:
-        pypandoc.convert_text(text, fmt, format='plain', outputfile=out_path)
+        try:
+            pypandoc.get_pandoc_path()
+        except OSError:
+            logging.warning("Pandoc not found. Downloading...")
+            pypandoc.download_pandoc()
+        try:
+            # Fix: Use markdown as input format
+            pypandoc.convert_text(text, to=fmt, format='markdown', outputfile=out_path)
+        except Exception as e:
+            raise RuntimeError(f"Error converting to {fmt}: {e}")
     else:
-        raise ValueError("Unsupported output format")
+        raise ValueError(f"Unsupported output format: {fmt}")
 
+# Main route
 @app.route("/", methods=["GET", "POST"])
 def index():
     error = None
@@ -76,34 +98,44 @@ def index():
             error = "Invalid or unsupported output format."
         else:
             try:
-                file_id = str(uuid.uuid4())
+                # Extract filename safely
+                original_name = secure_filename(uploaded_file.filename.rsplit('.', 1)[0])
                 ext = uploaded_file.filename.rsplit('.', 1)[1].lower()
-                input_path = os.path.join(UPLOAD_FOLDER, f"{file_id}.{ext}")
-                output_path = os.path.join(CONVERTED_FOLDER, f"{file_id}.{output_format}")
 
+                input_filename = f"{original_name}.{ext}"
+                output_filename = f"{original_name}.{output_format}"
+
+                input_path = os.path.join(UPLOAD_FOLDER, input_filename)
+                output_path = os.path.join(CONVERTED_FOLDER, output_filename)
+
+                # Save file
                 uploaded_file.save(input_path)
                 logging.info(f"Uploaded: {input_path}")
 
+                # Convert
                 text = extract_text(input_path, ext)
                 save_as_format(text, output_path, output_format)
 
+                # Cleanup after response
                 @after_this_request
                 def cleanup(response):
                     try:
                         os.remove(input_path)
                         os.remove(output_path)
-                        logging.info("Cleaned temporary files.")
+                        logging.info("Temporary files cleaned up.")
                     except Exception as cleanup_error:
                         logging.error(f"Cleanup error: {cleanup_error}")
                     return response
 
-                return send_file(output_path, as_attachment=True)
+                # Send file with original name
+                return send_file(output_path, as_attachment=True, download_name=output_filename)
 
             except Exception as e:
-                logging.error(f"Conversion error: {e}")
+                logging.exception("Conversion error:")
                 error = f"Error during conversion: {e}"
 
     return render_template("index.html", formats=sorted(OUTPUT_FORMATS), error=error)
 
+# Run app
 if __name__ == "__main__":
     app.run(debug=True)
