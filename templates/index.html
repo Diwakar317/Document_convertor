@@ -1,24 +1,37 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
     <title>Document Converter</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
-    <h2>Upload a document to convert</h2>
+    <div class="container">
+        <h1>Document Converter</h1>
+        <form action="/convert" method="post" enctype="multipart/form-data">
+            <label for="file">Choose document:</label>
+            <input type="file" name="file" id="file" required>
 
-    {% if error %}
-        <p style="color: red;">{{ error }}</p>
-    {% endif %}
+            <label for="output_format">Convert to:</label>
+            <select name="output_format" id="output_format" required>
+                <option value="">Select format</option>
+                <option value="pdf">PDF</option>
+                <option value="docx">DOCX</option>
+                <option value="txt">TXT</option>
+                <!-- Add more formats as needed -->
+            </select>
 
-    <form method="POST" enctype="multipart/form-data">
-        <input type="file" name="file" required><br><br>
-        <label>Convert to:</label>
-        <select name="format" required>
-            {% for fmt in formats %}
-                <option value="{{ fmt }}">{{ fmt }}</option>
-            {% endfor %}
-        </select><br><br>
-        <button type="submit">Convert</button>
-    </form>
+            <button type="submit">Convert</button>
+        </form>
+        {% if error %}
+            <div class="error">{{ error }}</div>
+        {% endif %}
+        {% if download_link %}
+            <div class="success">
+                Conversion successful!
+                <a href="{{ download_link }}">Download your file</a>
+            </div>
+        {% endif %}
+    </div>
 </body>
 </html>
