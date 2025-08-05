@@ -8,19 +8,17 @@
 <body>
     <div class="container">
         <h1>Document Converter</h1>
-        <form action="/convert" method="post" enctype="multipart/form-data">
+        <form action="/" method="post" enctype="multipart/form-data">
             <label for="file">Choose document:</label>
             <input type="file" name="file" id="file" required>
 
             <label for="output_format">Convert to:</label>
             <select name="output_format" id="output_format" required>
                 <option value="">Select format</option>
-                <option value="pdf">PDF</option>
-                <option value="docx">DOCX</option>
-                <option value="txt">TXT</option>
-                <!-- Add more formats as needed -->
+                {% for fmt in formats %}
+                    <option value="{{ fmt }}">{{ fmt.upper() }}</option>
+                {% endfor %}
             </select>
-
             <button type="submit">Convert</button>
         </form>
         {% if error %}
@@ -28,10 +26,11 @@
         {% endif %}
         {% if download_link %}
             <div class="success">
-                Conversion successful!
+                {{ success }}
                 <a href="{{ download_link }}">Download your file</a>
             </div>
         {% endif %}
+
     </div>
 </body>
 </html>

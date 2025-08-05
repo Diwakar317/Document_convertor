@@ -90,7 +90,7 @@ def index():
     error = None
     if request.method == "POST":
         uploaded_file = request.files.get('file')
-        output_format = request.form.get('format', '').lower()
+        output_format = request.form.get('output_format', '').lower()
 
         if not uploaded_file or not allowed_file(uploaded_file.filename):
             error = "Invalid or missing input file."
@@ -121,20 +121,27 @@ def index():
                 def cleanup(response):
                     try:
                         os.remove(input_path)
-                        os.remove(output_path)
-                        logging.info("Temporary files cleaned up.")
+                        logging.info(f"Deleted input file: {input_path}")
                     except Exception as cleanup_error:
-                        logging.error(f"Cleanup error: {cleanup_error}")
+                        logging.error(f"Cleanup error (input): {cleanup_error}")
                     return response
 
+
                 # Send file with original name
-                return send_file(output_path, as_attachment=True, download_name=output_filename)
+                download_url = f"/download/{output_filename}"
+                return render_template("index.html", formats=sorted(OUTPUT_FORMATS), success="Conversion successful!", error=None, download_link=download_url)
+
 
             except Exception as e:
                 logging.exception("Conversion error:")
                 error = f"Error during conversion: {e}"
 
     return render_template("index.html", formats=sorted(OUTPUT_FORMATS), error=error)
+
+@app.route("/download/<filename>")
+def download_file(filename):
+    path = os.path.join(CONVERTED_FOLDER, filename)
+    return send_file(path, as_attachment=True, download_name=filename)
 
 # Run app
 if __name__ == "__main__":
