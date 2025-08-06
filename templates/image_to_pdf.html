@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Image to PDF Converter</title>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+  <style>
+    #preview-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 15px;
+    }
+    .preview-item {
+      width: 150px;
+      height: auto;
+      position: relative;
+      cursor: move;
+    }
+    .preview-item img {
+      width: 100%;
+      border: 2px solid #ccc;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Upload and Reorder Images</h1>
+  <input type="file" id="imageInput" multiple accept=".jpg,.jpeg,.png"><br><br>
+  <div id="preview-container"></div>
+  <button onclick="convertToPDF()">Convert to PDF</button>
+
+  <script>
+    const previewContainer = document.getElementById('preview-container');
+    let uploadedFiles = [];
+
+    Sortable.create(previewContainer, {
+      animation: 150
+    });
+
+    document.getElementById('imageInput').addEventListener('change', async (e) => {
+      const files = e.target.files;
+      const formData = new FormData();
+
+      for (let file of files) {
+        formData.append('images', file);
+      }
+
+      const res = await fetch('/upload-images', {
+        method: 'POST',
+        body: formData
+      });
+
+      const data = await res.json();
+      console.log(data);
+      uploadedFiles = data.filenames;
+
+      for (let name of uploadedFiles) {
+        const imgElem = document.createElement('div');
+        imgElem.className = 'preview-item';
+        imgElem.setAttribute('data-name', name);
+        imgElem.innerHTML = `<img src="/uploads/${name}" alt="preview">`;
+        previewContainer.appendChild(imgElem);
+      }
+    });
+
+    async function convertToPDF() {
+    const order = Array.from(document.querySelectorAll('.preview-item'))
+                        .map(el => el.getAttribute('data-name'));
+
+    const res = await fetch('/convert-images', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order })
+    });
+
+    if (res.ok) {
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+
+        // ✅ Create and click a hidden download link
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = "converted.pdf";
+        document.body.appendChild(a);  // ✅ required for Firefox/Chrome
+        a.click();
+        document.body.removeChild(a);
+
+        window.URL.revokeObjectURL(url); // ✅ optional: cleanup
+    } else {
+        alert("PDF conversion failed.");
+    }
+    }
+
+  </script>
+</body>
+</html>

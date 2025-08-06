@@ -1,6 +1,7 @@
 import os
+import uuid
 import logging
-from flask import Flask, request, send_file, render_template, after_this_request
+from flask import Flask, request, send_file, render_template, after_this_request, send_from_directory, jsonify
 from werkzeug.utils import secure_filename
 import fitz  # PyMuPDF
 from docx import Document
@@ -9,9 +10,10 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import inch
 from textwrap import wrap
 import pypandoc
+from PIL import Image
 
 # Flask setup
-app = Flask(__name__)
+app = Flask(__name__, static_url_path='/uploads', static_folder='uploads')
 
 # Folders
 UPLOAD_FOLDER = 'uploads'
@@ -25,10 +27,14 @@ logging.basicConfig(level=logging.INFO)
 # Supported formats
 ALLOWED_EXTENSIONS = {'pdf', 'docx', 'txt', 'odt', 'rtf', 'md', 'html', 'htm', 'epub'}
 OUTPUT_FORMATS = {'txt', 'pdf', 'docx', 'odt', 'rtf', 'md', 'html', 'epub'}
+ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 
-# Check if file is allowed
+# Utility: Check if file is allowed
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def allowed_image(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_IMAGE_EXTENSIONS
 
 # Extract text from input file
 def extract_text(path, ext):
@@ -46,7 +52,7 @@ def extract_text(path, ext):
             logging.warning("Pandoc not found. Downloading...")
             pypandoc.download_pandoc()
         try:
-            return pypandoc.convert_file(path, 'markdown')  # Fix: Use markdown
+            return pypandoc.convert_file(path, 'markdown')
         except Exception as e:
             raise RuntimeError(f"Failed to extract using pypandoc: {e}")
     else:
@@ -77,14 +83,15 @@ def save_as_format(text, out_path, fmt):
             logging.warning("Pandoc not found. Downloading...")
             pypandoc.download_pandoc()
         try:
-            # Fix: Use markdown as input format
             pypandoc.convert_text(text, to=fmt, format='markdown', outputfile=out_path)
         except Exception as e:
             raise RuntimeError(f"Error converting to {fmt}: {e}")
     else:
         raise ValueError(f"Unsupported output format: {fmt}")
 
-# Main route
+# =======================
+# Main Route (Doc Convert)
+# =======================
 @app.route("/", methods=["GET", "POST"])
 def index():
     error = None
@@ -98,25 +105,19 @@ def index():
             error = "Invalid or unsupported output format."
         else:
             try:
-                # Extract filename safely
                 original_name = secure_filename(uploaded_file.filename.rsplit('.', 1)[0])
                 ext = uploaded_file.filename.rsplit('.', 1)[1].lower()
-
                 input_filename = f"{original_name}.{ext}"
                 output_filename = f"{original_name}.{output_format}"
-
                 input_path = os.path.join(UPLOAD_FOLDER, input_filename)
                 output_path = os.path.join(CONVERTED_FOLDER, output_filename)
 
-                # Save file
                 uploaded_file.save(input_path)
                 logging.info(f"Uploaded: {input_path}")
 
-                # Convert
                 text = extract_text(input_path, ext)
                 save_as_format(text, output_path, output_format)
 
-                # Cleanup after response
                 @after_this_request
                 def cleanup(response):
                     try:
@@ -126,11 +127,8 @@ def index():
                         logging.error(f"Cleanup error (input): {cleanup_error}")
                     return response
 
-
-                # Send file with original name
                 download_url = f"/download/{output_filename}"
-                return render_template("index.html", formats=sorted(OUTPUT_FORMATS), success="Conversion successful!", error=None, download_link=download_url)
-
+                return render_template("index.html", formats=sorted(OUTPUT_FORMATS), success="Conversion successful!", download_link=download_url)
 
             except Exception as e:
                 logging.exception("Conversion error:")
@@ -138,11 +136,97 @@ def index():
 
     return render_template("index.html", formats=sorted(OUTPUT_FORMATS), error=error)
 
+# =======================
+# IMAGE TO PDF Features
+# =======================
+
+# Show drag & drop image to PDF UI
+@app.route('/image-to-pdf', methods=['GET'])
+def image_to_pdf():
+    return render_template('image_to_pdf.html')
+
+# Upload images
+@app.route('/upload-images', methods=['POST'])
+def upload_images():
+    files = request.files.getlist('images')
+    image_ids = []
+
+    for file in files:
+        if file and allowed_image(file.filename):
+            ext = file.filename.rsplit('.', 1)[1].lower()
+            unique_name = f"{uuid.uuid4()}.{ext}"
+            filepath = os.path.join(UPLOAD_FOLDER, unique_name)
+            file.save(filepath)
+            image_ids.append(unique_name)
+    
+    if not image_ids:
+        return jsonify({'success': False, 'message': 'No valid images uploaded'}), 400
+    return jsonify({'status': 'success', 'filenames': image_ids})
+
+# Convert to PDF
+from io import BytesIO
+
+@app.route('/convert-images', methods=['POST'])
+def convert_images():
+    data = request.get_json()
+    order = data['order']
+
+    if not order:
+        return jsonify({'error': 'No image order received'}), 400
+
+    images = []
+    for name in order:
+        path = os.path.join(UPLOAD_FOLDER, name)
+        try:
+            image = Image.open(path).convert("RGB")
+            images.append(image)
+        except Exception as e:
+            logging.error(f"Error loading image {name}: {e}")
+            return jsonify({'error': f"Failed to load image: {name}"}), 400
+
+    if not images:
+        return jsonify({'error': 'No valid images to convert'}), 400
+
+    pdf_buffer = BytesIO()
+
+    try:
+        if len(images) == 1:
+            images[0].save(pdf_buffer, format='PDF')
+        else:
+            images[0].save(pdf_buffer, format='PDF', save_all=True, append_images=images[1:])
+        pdf_buffer.seek(0)
+
+        # Optional: Save for debugging
+        with open("test_output.pdf", "wb") as f:
+            f.write(pdf_buffer.getbuffer())
+
+        return send_file(
+            pdf_buffer,
+            as_attachment=True,
+            download_name='converted.pdf',
+            mimetype='application/pdf'
+        )
+
+    except Exception as e:
+        logging.exception("Failed to convert images to PDF")
+        return jsonify({'error': 'Failed to convert to PDF'}), 500
+
+
+# Serve image previews
+@app.route('/uploads/<filename>')
+def uploaded_file(filename):
+    return send_from_directory(UPLOAD_FOLDER, filename)
+
+# =======================
+# Download Route
+# =======================
 @app.route("/download/<filename>")
 def download_file(filename):
     path = os.path.join(CONVERTED_FOLDER, filename)
     return send_file(path, as_attachment=True, download_name=filename)
 
+# =======================
 # Run app
+# =======================
 if __name__ == "__main__":
     app.run(debug=True)
