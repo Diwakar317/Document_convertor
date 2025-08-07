@@ -13,7 +13,7 @@ import pypandoc
 from PIL import Image
 
 # Flask setup
-app = Flask(__name__, static_url_path='/uploads', static_folder='uploads')
+app = Flask(__name__)
 
 # Folders
 UPLOAD_FOLDER = 'uploads'
@@ -196,9 +196,12 @@ def convert_images():
             images[0].save(pdf_buffer, format='PDF', save_all=True, append_images=images[1:])
         pdf_buffer.seek(0)
 
-        # Optional: Save for debugging
-        with open("test_output.pdf", "wb") as f:
+        # Save to converted folder
+        output_filename = f"{uuid.uuid4()}.pdf"
+        output_path = os.path.join(CONVERTED_FOLDER, output_filename)
+        with open(output_path, "wb") as f:
             f.write(pdf_buffer.getbuffer())
+        pdf_buffer.seek(0)
 
         return send_file(
             pdf_buffer,
