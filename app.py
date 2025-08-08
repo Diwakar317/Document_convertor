@@ -28,7 +28,7 @@ logging.basicConfig(level=logging.INFO)
 # Supported formats
 ALLOWED_EXTENSIONS = {'pdf', 'docx', 'txt', 'odt', 'rtf', 'md', 'html', 'htm', 'epub'}
 OUTPUT_FORMATS = {'txt', 'pdf', 'docx', 'odt', 'rtf', 'md', 'html', 'epub'}
-
+ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 
 # Utility: Check if file is allowed
 def allowed_file(filename):

@@ -1,0 +1,270 @@
+html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      background: #efededff;
+      width: 100vw;
+      min-height: 100vh;
+    }
+    body {
+      font-family: Arial, sans-serif;
+      min-height: 100vh;
+      width: 100vw;
+      margin: 0;
+      padding: 0;
+      /* Remove flex centering for full-width panels */
+    }
+    .upload-container {
+      border-radius: 12px;
+      padding: 40px 32px;
+      text-align: center;
+      width: 100%;
+      position: relative;
+      max-width: 500px;
+      margin: 60px auto;
+    }
+    h2 {
+      color: #0e0e0eff;
+      font-size: 2rem;
+      margin-bottom: 12px;
+    }
+    .drag-area {
+      border-radius: 8px;
+      padding: 20px 20px;
+      cursor: pointer;
+      margin-bottom: 24px;
+      transition: background 0.2s, border 0.2s;
+    }
+    .drag-area.dragover, body.dragover {
+      background: #bbdefb;
+    }
+    .upload-btn {
+      background: #1976d2;
+      color: #fff;
+      border: none;
+      border-radius: 15px;
+      padding: 12px 32px;
+      font-size: 30px;
+      cursor: pointer;
+      margin: 12px 0;
+      transition: background 0.2s;
+      font-weight: 500;
+      box-shadow: 0 2px 8px rgba(33,150,243,0.15);
+    }
+    .upload-btn:hover {
+      background: #1565c0;
+    }
+    #imageInput {
+      display: none;
+    }
+    /* --- Main panels: full screen width --- */
+    .main-panels {
+      display: flex;
+      width: 100vw;
+      height: 100vh;
+      margin: 0;
+      background: #fff;
+      border-radius: 0;
+      box-shadow: none;
+      overflow: hidden;
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 10;
+    }
+    .preview-panel {
+      width: 70vw;
+      height: 100vh;
+      padding: 32px 24px;
+      box-sizing: border-box;
+      border-right: 1px solid #eee;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      min-height: 100vh;
+      overflow-y: auto;
+      background: #f7f7f7;
+      position: relative;
+    }
+    .preview-list {
+      margin-top: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 24px;
+      justify-content: flex-start;
+    }
+    .preview-item {
+      position: relative;
+      width: 180px;
+      height: 220px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      user-select: none;
+      background: #fff;
+      border-radius: 12px;
+      /* border: 2px solid #1976d2; */
+      box-shadow: 0 2px 8px rgba(33,150,243,0.10);
+      cursor: grab;
+      padding: 12px 8px 8px 8px;
+    }
+    .preview-img {
+      width: 160px;
+      height: 160px;
+      border-radius: 8px;
+      border: none;
+      background: transparent;
+      box-shadow: none;
+      margin-bottom: 8px;
+      object-fit: contain; /* <-- Prevent cropping */
+      background: #fafafa;
+      display: block;
+    }
+    .delete-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: #f44336;
+      color: #fff;
+      border: none;
+      border-radius: 50%;
+      width: 26px;
+      height: 26px;
+      cursor: pointer;
+      font-size: 20px;
+      line-height: 22px;
+      text-align: center;
+      z-index: 2;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .delete-btn:hover {
+      background: #b71c1c;
+    }
+    .image-name {
+      width: 100%;
+      text-align: center;
+      font-size: 1rem;
+      color: #333;
+      margin-top: auto; /* Push name to bottom */
+      word-break: break-all;
+      background: #f7f7f7;
+      border-radius: 6px;
+      padding: 2px 0;
+      position: absolute;
+      left: 0;
+      bottom: 0;
+    }
+    .options-panel {
+      width: 30vw;
+      height: 100vh;
+      padding: 32px 24px;
+      box-sizing: border-box;
+      background: #fff;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      overflow-y: auto;
+      position: relative; /* Needed for absolute button positioning */
+    }
+    .options-panel h3 {
+      margin-top: 0;
+      margin-bottom: 18px;
+      color: #1976d2;
+      font-size: 1.3rem;
+    }
+    .options-panel label {
+      display: block;
+      margin-bottom: 16px;
+      font-size: 1rem;
+      color: #222;
+    }
+    .options-panel input, .options-panel select {
+      margin-left: 8px;
+      padding: 4px 8px;
+      font-size: 1rem;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+    }
+    .options-panel input[type="number"] {
+      width: 60px;
+    }
+    .convert-btn {
+      width: 90%;
+      max-width: 400px;
+      margin: auto;
+      margin-top: auto;
+      
+      display: block;
+      padding: 25px 0;
+      font-size: 1.5rem;
+      font-weight: bold;
+      background: #1976d2;
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(33,150,243,0.15);
+      cursor: pointer;
+      transition: background 0.2s;
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: 24px;
+    }
+    .convert-btn:hover {
+      background: #1565c0;
+    }
+    /* --- Drag-and-drop visual feedback --- */
+    .preview-item.drag-over {
+      outline: 2px dashed #1976d2;
+      background: #e3f2fd;
+    }
+    .preview-item.dragging {
+      opacity: 0.5;
+    }
+    .add-image-btn {
+      position: fixed;
+      top: 40px;
+      right: 32vw;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: #1976d2;
+      color: #fff;
+      border: none;
+      font-size: 2rem;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(33,150,243,0.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      transition: background 0.2s;
+      outline: none;
+    }
+    .add-image-btn:hover {
+      background: #1565c0;
+    }
+    .add-image-tooltip {
+      display: none;
+      position: absolute;
+      top: 52px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #222;
+      color: #fff;
+      padding: 4px 12px;
+      border-radius: 6px;
+      font-size: 1rem;
+      white-space: nowrap;
+      z-index: 101;
+      pointer-events: none;
+    }
+    .add-image-btn:hover .add-image-tooltip {
+      display: block;
+    }
