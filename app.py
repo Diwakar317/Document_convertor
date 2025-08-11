@@ -152,29 +152,66 @@ def download_file(filename):
 def image_to_pdf():
     return render_template("image-to-pdf.html")
 
-@app.route('/convert-images', methods=['POST'])
+# =======================
+# Convert Images -> PDF
+# =======================
+@app.route("/convert-images", methods=["POST"])
 def convert_images():
-    images = request.files.getlist('images')
-    pil_images = []
-    for img in images:
-        pil_img = Image.open(img).convert('RGB')
-        pil_images.append(pil_img)
-    if not pil_images:
-        return "No images uploaded", 400
-    pdf_bytes = io.BytesIO()
-    pil_images[0].save(
-        pdf_bytes,
-        format='PDF',
-        save_all=True,
-        append_images=pil_images[1:]
-    )
-    pdf_bytes.seek(0)
-    return send_file(
-        pdf_bytes,
-        mimetype='application/pdf',
-        as_attachment=True,
-        download_name='converted.pdf'
-    )
+    try:
+        # Only keep files with a non-empty filename
+        files = [f for f in request.files.getlist('images') if f and getattr(f, "filename", "").strip()]
+        if not files:
+            files = [f for f in request.files.values() if f and getattr(f, "filename", "").strip()]
+
+        logging.info("convert-images: received %d file(s): %s",
+                     len(files), [f.filename for f in files])
+
+        if not files:
+            logging.warning("No valid images received (request.files keys: %s)", list(request.files.keys()))
+            return jsonify({"error": "No images uploaded"}), 400
+
+        pil_images = []
+        for f in files:
+            try:
+                f.stream.seek(0)
+            except Exception:
+                pass
+            try:
+                with Image.open(f.stream) as im:
+                    # Convert to RGB (flatten transparency if present)
+                    if im.mode in ("RGBA", "LA"):
+                        bg = Image.new("RGB", im.size, (255, 255, 255))
+                        bg.paste(im, mask=im.split()[-1])
+                        pil_images.append(bg)
+                    else:
+                        pil_images.append(im.convert("RGB"))
+            except Exception as e:
+                logging.warning(f"Could not open image {getattr(f, 'filename', '')}: {e}")
+
+        if not pil_images:
+            logging.warning("No valid images after decoding with PIL.")
+            return jsonify({"error": "No images uploaded"}), 400
+
+        # Build PDF in memory
+        pdf_bytes = io.BytesIO()
+        if len(pil_images) == 1:
+            pil_images[0].save(pdf_bytes, format="PDF")
+        else:
+            pil_images[0].save(pdf_bytes, format="PDF", save_all=True, append_images=pil_images[1:])
+        pdf_bytes.seek(0)
+
+        logging.info("convert-images: PDF generated, size=%d bytes", len(pdf_bytes.getbuffer()))
+
+        return send_file(
+            pdf_bytes,
+            mimetype="application/pdf",
+            as_attachment=True,
+            download_name="converted.pdf"
+        )
+
+    except Exception as e:
+        logging.exception("Failed to convert images to PDF")
+        return jsonify({"error": "Conversion failed", "details": str(e)}), 500
 # =======================
 # Run app
 # =======================

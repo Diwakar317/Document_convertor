@@ -187,40 +187,62 @@ panelPreviewList.addEventListener('drop', (e) => {
   }
 });
 
+let isConverting = false;
+
 document.getElementById('convertBtn').addEventListener('click', async () => {
+  // Prevent double submit
+  if (isConverting) return;
+
+  // Check if images are present
   if (images.length === 0) {
     alert("Please add images first.");
     return;
   }
-  const formData = new FormData();
-  images.forEach((imgObj, idx) => {
-    // Convert base64 to Blob
-    const arr = imgObj.dataUrl.split(',');
-    const mime = arr[0].match(/:(.*?);/)[1];
-    const bstr = atob(arr[1]);
-    let n = bstr.length;
-    const u8arr = new Uint8Array(n);
-    while(n--) u8arr[n] = bstr.charCodeAt(n);
-    const file = new File([u8arr], imgObj.name, {type: mime});
-    formData.append('images', file);
-  });
 
-  const res = await fetch('/convert-images', {
-    method: 'POST',
-    body: formData
-  });
+  isConverting = true;
+  const convertBtn = document.getElementById('convertBtn');
+  convertBtn.disabled = true;
+  convertBtn.textContent = "Converting...";
 
-  if (res.ok) {
-    const blob = await res.blob();
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = "converted.pdf";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    window.URL.revokeObjectURL(url);
-  } else {
-    alert("PDF conversion failed.");
+  try {
+    // Prepare form data with image files
+    const formData = new FormData();
+    images.forEach(imgObj => {
+      // Convert base64 to Blob
+      const [header, base64] = imgObj.dataUrl.split(',');
+      const mime = header.match(/:(.*?);/)[1];
+      const binary = atob(base64);
+      const array = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) {
+        array[i] = binary.charCodeAt(i);
+      }
+      const file = new File([array], imgObj.name, { type: mime });
+      formData.append('images', file);
+    });
+
+    // Send images to backend for PDF conversion
+    const response = await fetch('/convert-images', {
+      method: 'POST',
+      body: formData
+    });
+
+    // Handle response
+    if (response.ok) {
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = "converted.pdf";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } else {
+      alert("PDF conversion failed.");
+    }
+  } finally {
+    isConverting = false;
+    convertBtn.disabled = false;
+    convertBtn.textContent = "Convert to PDF";
   }
 });
