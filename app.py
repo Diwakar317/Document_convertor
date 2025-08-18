@@ -212,6 +212,15 @@ def convert_images():
     except Exception as e:
         logging.exception("Failed to convert images to PDF")
         return jsonify({"error": "Conversion failed", "details": str(e)}), 500
+
+# =======================
+# Serve images from 'img' directory
+# =======================
+@app.route('/img/<path:filename>')
+def images(filename):
+    return send_from_directory('img', filename)
+
+
 # =======================
 # Run app
 # =======================

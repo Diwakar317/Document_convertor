@@ -2,10 +2,12 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document Converter</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
+    {% include 'header.html' %}
     <div class="container">
         <h1>Document Converter</h1>
         <form action="/" method="post" enctype="multipart/form-data">
@@ -29,8 +31,7 @@
                 {{ success }}
                 <a href="{{ download_link }}">Download your file</a>
             </div>
-        {% endif %}
-    <a href="{{ url_for('image_to_pdf') }}">Convert Images to PDF</a>  
+        {% endif %} 
     </div>
 </body>
 </html>

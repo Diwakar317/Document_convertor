@@ -1,14 +1,12 @@
 @import url('https://fonts.googleapis.com/css?family=Inter:400,600&display=swap');
 
 body {
-    background: linear-gradient(135deg, #e3f0ff 0%, #fceabb 100%);
+    background: #eee;
     font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     color: #232946;
     margin: 0;
     min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    
 }
 
 .container {
@@ -23,6 +21,7 @@ body {
     flex-direction: column;
     align-items: center;
     transition: box-shadow 0.2s;
+    margin: 40px auto 0 auto;
 }
 
 h1 {
@@ -139,4 +138,54 @@ a:hover {
     margin-top: 20px;
     color: red;
     font-weight: bold;
+}
+
+.main-header {
+    display: flex;
+    align-items: center;
+    background: #fff;
+    padding: 10px 30px;
+    border-bottom: 1px solid #eee;
+    font-family: Arial, sans-serif;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    font-size: 2rem;
+    font-weight: bold;
+    margin-right: 40px;
+}
+
+.logo-img {
+    height: 42px; /* Adjust as needed */
+    width: auto;
+    display: block;
+}
+
+.main-nav {
+    display: flex;
+    align-items: center;
+    gap: 30px;
+    font-size: 1rem;
+}
+
+.main-nav a {
+    color: #111;
+    text-decoration: none;
+    font-weight: 540;
+    padding: 4px 0;
+    transition: color 0.2s;
+}
+
+.main-nav a:hover {
+    color: #1565c0;
+}
+
+.dropdown {
+    position: relative;
+}
+
+.dropdown a {
+    cursor: pointer;
 }

@@ -5,6 +5,7 @@ html, body {
   background: #efededff;
   width: 100vw;
   min-height: 100vh;
+  overflow-x: hidden;
 }
 body {
   font-family: Arial, sans-serif;
@@ -267,4 +268,53 @@ h2 {
 }
 .add-image-btn:hover .add-image-tooltip {
   display: block;
+}
+.main-header {
+    display: flex;
+    align-items: center;
+    background: #fff;
+    padding: 10px 30px;
+    border-bottom: 1px solid #eee;
+    font-family: Arial, sans-serif;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    font-size: 2rem;
+    font-weight: bold;
+    margin-right: 40px;
+}
+
+.logo-img {
+    height: 42px; /* Adjust as needed */
+    width: auto;
+    display: block;
+}
+
+.main-nav {
+    display: flex;
+    align-items: center;
+    gap: 30px;
+    font-size: 1rem;
+}
+
+.main-nav a {
+    color: #111;
+    text-decoration: none;
+    font-weight: 540;
+    padding: 4px 0;
+    transition: color 0.2s;
+}
+
+.main-nav a:hover {
+    color: #1565c0;
+}
+
+.dropdown {
+    position: relative;
+}
+
+.dropdown a {
+    cursor: pointer;
 }
