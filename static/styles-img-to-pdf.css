@@ -68,10 +68,7 @@ h2 {
   border-radius: 0;
   box-shadow: none;
   overflow: hidden;
-  position: fixed;
-  top: 0;
-  left: 0;
-  z-index: 10;
+  position: static;
 }
 .preview-panel {
   width: 70vw;
@@ -214,7 +211,7 @@ h2 {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  bottom: 24px;
+  bottom: 70px;
 }
 .convert-btn:hover {
   background: #1565c0;
@@ -229,7 +226,7 @@ h2 {
 }
 .add-image-btn {
   position: fixed;
-  top: 40px;
+  top: 100px;
   right: 32vw;
   width: 44px;
   height: 44px;

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Merge PDF Files</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles-img-to-pdf.css') }}">
+</head>
+<body>
+  {% include 'header.html' %}
+  <!-- Upload panel shown initially -->
+  <div class="upload-container" id="uploadContainer">
+    <h2>Merge PDF Files</h2>
+    <div class="drag-area" id="dragArea">
+      <button class="upload-btn" id="uploadBtn">Upload PDFs</button>
+      <p>or drop PDF files on this page</p>
+  <input type="file" id="pdfInput" multiple accept="application/pdf" style="display:none;">
+    </div>
+    <div class="preview-list" id="previewList"></div>
+  </div>
+  <!-- Main panels shown after PDFs are uploaded -->
+  <div class="main-panels" id="mainPanels" style="display:none;">
+    <!-- Preview panel: occupies 70% of screen width -->
+    <div class="preview-panel">
+      <h2 style="display:inline-block;">Preview</h2>
+      <button class="add-image-btn" id="addPdfBtn" title="Add PDFs">
+        +
+        <span class="add-image-tooltip">Add PDFs</span>
+      </button>
+      <div class="preview-list" id="panelPreviewList"></div>
+    </div>
+    <!-- Options panel: occupies 30% of screen width -->
+    <div class="options-panel" id="optionsPanel">
+      <h3>Merge PDFs</h3>
+      <!-- You can add more options here if needed -->
+      <button id="mergeBtn" class="convert-btn" type="button">Merge PDFs</button>
+    </div>
+  </div>
+  <script src="{{ url_for('static', filename='merge-pdf.js') }}"></script>
+</body>
+</html>
