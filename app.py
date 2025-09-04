@@ -20,8 +20,10 @@ app = Flask(__name__)
 # Folders
 UPLOAD_FOLDER = 'uploads'
 CONVERTED_FOLDER = 'converted'
+COMPRESSED_FOLDER = 'compressed'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-os.makedirs(CONVERTED_FOLDER, exist_ok=True)
+os.makedirs(CONVERTED_FOLDER, exist_ok=True) 
+os.makedirs(COMPRESSED_FOLDER, exist_ok=True) # added a new folder for compressed file but i really think we should make all uploades in a single folder. -Ani
 
 # Logging
 logging.basicConfig(level=logging.INFO)
@@ -260,7 +262,108 @@ def merge_pdf_page():
     return render_template("merge-pdf.html")
 
 # =======================
-# Run app
+# PDF Compressor images
 # =======================
+
+# Presets for compression levels
+PRESETS = {
+    "low":      {"dpi": 100, "jpeg_quality": 60, "scale": 0.80},  
+    "moderate": {"dpi": 100, "jpeg_quality": 50, "scale": 0.75},  
+    "high":     {"dpi": 100, "jpeg_quality": 40, "scale": 0.70},  
+} # dpi is dots per inch and scale in resolution of the pixels.
+
+# to check if the pdf has an image or not
+def has_images(doc):
+    """Check if any page contains embedded images."""
+    for page in doc:
+        if page.get_images(full=True):
+            return True
+    return False
+
+# if no image only text
+def compress_pdf_text_only(input_path, output_path):
+    doc = fitz.open(input_path)
+    doc.save(output_path, garbage=4, deflate=True, clean=True)
+    doc.close()
+
+# if image is found
+def rasterize_pdf(input_path, output_path, dpi=120, jpeg_quality=60, scale=0.8):
+    doc = fitz.open(input_path)
+    new_doc = fitz.open()
+    for page in doc:
+        # Scale down page rendering
+        matrix = fitz.Matrix(dpi/72 * scale, dpi/72 * scale)
+        pix = page.get_pixmap(matrix=matrix)
+
+        # Convert to PIL image
+        img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=jpeg_quality, optimize=True)
+
+        rect = fitz.Rect(0, 0, pix.width, pix.height)
+        new_page = new_doc.new_page(width=pix.width, height=pix.height)
+        new_page.insert_image(rect, stream=buf.getvalue())
+
+    new_doc.save(output_path, deflate=True, garbage=4)
+    new_doc.close()
+    doc.close()
+    
+# ================
+# Main Compression
+# ================
+def compress_pdf(input_path, output_path, level="moderate"):
+    cfg = PRESETS.get(level, PRESETS["moderate"])
+
+    doc = fitz.open(input_path)
+    if has_images(doc):
+        doc.close()
+        rasterize_pdf(
+            input_path,
+            output_path,
+            dpi=cfg["dpi"],
+            jpeg_quality=cfg["jpeg_quality"],
+            scale=cfg["scale"]
+        )
+    else:
+        doc.close()
+        compress_pdf_text_only(input_path, output_path)
+
+# ====================
+# Compressed PDF Route
+# ====================
+@app.route('/pdf_compression')
+def pdf_compression():
+    return render_template('pdf_compression.html')
+
+# ================================
+# Send compressed file to the user
+# ================================
+@app.route('/compress', methods=['POST'])
+def compress():
+    if "pdf_file" not in request.files:
+        return "No file uploaded", 400
+    f = request.files["pdf_file"]
+    if not f or not f.filename.lower().endswith(".pdf"):
+        return "Please upload a PDF", 400
+    
+# ================================
+# Saving compressed file to device
+# ================================
+    level = request.form.get("compression_level", "moderate")
+    level = level if level in PRESETS else "moderate"
+
+    in_name = secure_filename(f.filename)
+    in_path = os.path.join(UPLOAD_FOLDER, in_name)
+    out_path = os.path.join(COMPRESSED_FOLDER, f"compressed_{in_name}")
+
+    f.save(in_path)
+    compress_pdf(in_path, out_path, level=level)
+
+    return send_file(out_path, as_attachment=True, download_name=os.path.basename(out_path))
+
+# =========
+# Run app
+# =========
 if __name__ == "__main__":
     app.run(debug=True)

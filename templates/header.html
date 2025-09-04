@@ -3,9 +3,10 @@
         <img src="{{ url_for('images', filename='logo.png') }}" alt="Logo" class="logo-img">
     </div>
     <nav class="main-nav">
-    <a href="{{ url_for('merge_pdf_page') }}">MERGE PDF</a>
+        <a href="{{ url_for('index') }}">CONVERT PDF</a> <!--the nav didnt had a link to the main convertion page-->
+        <a href="{{ url_for('merge_pdf_page') }}">MERGE PDF</a>
         <a href="#">SPLIT PDF</a>
-        <a href="#">COMPRESS PDF</a>
+        <a href="{{ url_for('pdf_compression') }}">COMPRESS PDF</a>
         <a href="{{ url_for('image_to_pdf') }}">IMAGE TO PDF</a>
         <a href="#">EDIT PDF</a>
         <!-- <div class="dropdown">
