@@ -6,8 +6,6 @@ const previewList = document.getElementById('previewList');
 const uploadContainer = document.getElementById('uploadContainer');
 const mainPanels = document.getElementById('mainPanels');
 const panelPreviewList = document.getElementById('panelPreviewList');
-const marginType = document.getElementById('marginType');
-const customMargin = document.getElementById('customMargin');
 const addImageBtn = document.getElementById('addImageBtn');
 
 // --- State: images array ---
@@ -67,10 +65,6 @@ dragArea.addEventListener('drop', (e) => {
   }
 });
 
-// --- Show/hide custom margin input ---
-marginType.addEventListener('change', function() {
-  customMargin.style.display = this.value === 'custom' ? 'inline-block' : 'none';
-});
 
 // --- Add images to preview (append, do not replace) ---
 function addImagesToPreview(files) {
