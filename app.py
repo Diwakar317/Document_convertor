@@ -12,7 +12,7 @@ from textwrap import wrap
 import pypandoc
 from PIL import Image
 import io
-from PyPDF2 import PdfMerger
+from PyPDF2 import PdfMerger, PdfReader, PdfWriter
 
 # Flask setup
 app = Flask(__name__)
@@ -139,21 +139,6 @@ def index():
     return render_template("index.html", formats=sorted(OUTPUT_FORMATS), error=error)
 
 # =======================
-# Download Route
-# =======================
-@app.route("/download/<filename>")
-def download_file(filename):
-    path = os.path.join(CONVERTED_FOLDER, filename)
-    return send_file(path, as_attachment=True, download_name=filename)
-
-# =======================
-# Image to PDF Route
-# =======================
-@app.route("/image-to-pdf")
-def image_to_pdf():
-    return render_template("image-to-pdf.html")
-
-# =======================
 # Convert Images -> PDF
 # =======================
 @app.route("/convert-images", methods=["POST"])
@@ -244,6 +229,22 @@ def merge_pdfs():
         logging.exception("Failed to merge PDFs")
         return jsonify({"error": "Merge failed", "details": str(e)}), 500
 
+
+# =======================
+# Download Route
+# =======================
+@app.route("/download/<filename>")
+def download_file(filename):
+    path = os.path.join(CONVERTED_FOLDER, filename)
+    return send_file(path, as_attachment=True, download_name=filename)
+
+# =======================
+# Image to PDF Route
+# =======================
+@app.route("/image-to-pdf")
+def image_to_pdf():
+    return render_template("image-to-pdf.html")
+
 # =======================
 # Serve images from 'img' directory
 # =======================
@@ -258,6 +259,13 @@ def images(filename):
 @app.route("/merge-pdf")
 def merge_pdf_page():
     return render_template("merge-pdf.html")
+
+# =======================
+# Split PDF Page Route
+# =======================
+@app.route("/split-pdf")
+def split_pdf_page():
+    return render_template("split-pdf.html")
 
 # =======================
 # Run app
