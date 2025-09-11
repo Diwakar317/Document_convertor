@@ -211,6 +211,7 @@ document.getElementById('convertBtn').addEventListener('click', async () => {
         array[i] = binary.charCodeAt(i);
       }
       const file = new File([array], imgObj.name, { type: mime });
+      console.log(`Uploading file: ${imgObj.name}, size: ${file.size} bytes`);
       formData.append('images', file);
     });
 
@@ -220,20 +221,29 @@ document.getElementById('convertBtn').addEventListener('click', async () => {
       body: formData
     });
 
-    // Handle response
-    if (response.ok) {
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = "converted.pdf";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
-    } else {
+    if (!response.ok) {
       alert("PDF conversion failed.");
+      return;
     }
+
+    // Only read the response body ONCE
+    const blob = await response.blob();
+    console.log("Downloaded PDF blob size:", blob.size);
+    if (blob.size === 0) {
+      alert("Received empty PDF file. Please try again or check server logs.");
+      return;
+    }
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = "converted.pdf";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+  } catch (err) {
+    console.error("Error during PDF conversion:", err);
+    alert("PDF conversion failed: " + err.message);
   } finally {
     isConverting = false;
     convertBtn.disabled = false;

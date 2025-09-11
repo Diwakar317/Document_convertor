@@ -29,8 +29,8 @@ os.makedirs(COMPRESSED_FOLDER, exist_ok=True) # added a new folder for compresse
 logging.basicConfig(level=logging.INFO)
 
 # Supported formats
-ALLOWED_EXTENSIONS = {'pdf', 'docx', 'txt', 'odt', 'rtf', 'md', 'html', 'htm', 'epub'}
-OUTPUT_FORMATS = {'txt', 'pdf', 'docx', 'odt', 'rtf', 'md', 'html', 'epub'}
+ALLOWED_EXTENSIONS = {'pdf', 'docx', 'txt'}
+OUTPUT_FORMATS = {'txt', 'pdf', 'docx'}
 ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 
 # Utility: Check if file is allowed
@@ -41,14 +41,91 @@ def allowed_image(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_IMAGE_EXTENSIONS
 
 # Extract text from input file
-def extract_text(path, ext):
+def extract_text(path, ext, output_format=None):
     ext = ext.lower()
+    output_format = (output_format or '').lower()
+    # PDF conversions
     if ext == 'pdf':
-        doc = fitz.open(path)
-        return "\n".join(page.get_text() for page in doc)
+        if output_format == 'docx':
+            from pdf2docx import Converter
+            docx_path = path.replace('.pdf', '.docx')
+            cv = Converter(path)
+            cv.convert(docx_path, start=0, end=None)
+            cv.close()
+            return docx_path
+        
+        elif output_format == 'image':
+            # Extract all images from PDF using PyMuPDF
+            doc = fitz.open(path)
+            img_dir = os.path.join(os.path.dirname(path), 'extracted_images')
+            os.makedirs(img_dir, exist_ok=True)
+            img_paths = []
+            for page_num in range(len(doc)):
+                page = doc[page_num]
+                for img_index, img in enumerate(page.get_images(full=True)):
+                    xref = img[0]
+                    base_image = doc.extract_image(xref)
+                    img_bytes = base_image['image']
+                    ext = base_image['ext']
+                    img_path = os.path.join(img_dir, f'page{page_num+1}_img{img_index+1}.{ext}')
+                    with open(img_path, 'wb') as img_file:
+                        img_file.write(img_bytes)
+                    img_paths.append(img_path)
+            doc.close()
+            return img_paths
+        elif output_format == 'txt':
+            try:
+                pypandoc.get_pandoc_path()
+            except OSError:
+                logging.warning("Pandoc not found. Downloading...")
+                pypandoc.download_pandoc()
+            txt_path = path.replace('.pdf', '.txt')
+            try:
+                pypandoc.convert_file(path, 'plain', outputfile=txt_path)
+            except Exception as e:
+                # fallback to PyMuPDF text extraction
+                doc = fitz.open(path)
+                text = "\n".join(page.get_text() for page in doc)
+                with open(txt_path, 'w', encoding='utf-8') as f:
+                    f.write(text)
+            return txt_path
+        else:
+            # fallback to PyMuPDF text extraction
+            doc = fitz.open(path)
+            return "\n".join(page.get_text() for page in doc)
+    # DOCX conversions
     elif ext == 'docx':
-        doc = Document(path)
-        return '\n'.join(p.text for p in doc.paragraphs)
+        if output_format == 'txt':
+            doc = Document(path)
+            return '\n'.join(p.text for p in doc.paragraphs)
+        elif output_format == 'html':
+            try:
+                pypandoc.get_pandoc_path()
+            except OSError:
+                logging.warning("Pandoc not found. Downloading...")
+                pypandoc.download_pandoc()
+            html_path = path.replace('.docx', '.html')
+            try:
+                pypandoc.convert_file(path, 'html', outputfile=html_path)
+            except Exception as e:
+                raise RuntimeError(f"Failed to convert DOCX to HTML: {e}")
+            return html_path
+        elif output_format == 'pdf':
+            try:
+                pypandoc.get_pandoc_path()
+            except OSError:
+                logging.warning("Pandoc not found. Downloading...")
+                pypandoc.download_pandoc()
+            pdf_path = path.replace('.docx', '.pdf')
+            try:
+                pypandoc.convert_file(path, 'pdf', outputfile=pdf_path, extra_args=['--pdf-engine=wkhtmltopdf'])
+            except Exception as e:
+                raise RuntimeError(f"Failed to convert DOCX to PDF: {e}")
+            return pdf_path
+        else:
+            doc = Document(path)
+            return '\n'.join(p.text for p in doc.paragraphs)
+    # Other formats
     elif ext in ALLOWED_EXTENSIONS:
         try:
             pypandoc.get_pandoc_path()
@@ -63,16 +140,24 @@ def extract_text(path, ext):
         raise ValueError(f"Unsupported input format: {ext}")
 
 # Save text to output file format
-def save_as_format(text, out_path, fmt):
+def save_as_format(text_or_path, out_path, fmt):
     fmt = fmt.lower()
+    # If text_or_path is a file path (from extract_text for PDF->DOCX/HTML/EPUB), just move/rename
+    if fmt == 'image' and isinstance(text_or_path, list):
+        # For images, just return the list of image paths
+        return text_or_path
+    if isinstance(text_or_path, str) and os.path.isfile(text_or_path):
+        if text_or_path != out_path:
+            os.replace(text_or_path, out_path)
+        return
     if fmt == 'txt':
         with open(out_path, 'w', encoding='utf-8') as f:
-            f.write(text)
+            f.write(text_or_path)
     elif fmt == 'pdf':
         c = canvas.Canvas(out_path, pagesize=A4)
         width, height = A4
         y = height - inch
-        for line in text.splitlines():
+        for line in text_or_path.splitlines():
             for wrapped_line in wrap(line, 100):
                 c.drawString(1 * inch, y, wrapped_line)
                 y -= 15
@@ -87,7 +172,7 @@ def save_as_format(text, out_path, fmt):
             logging.warning("Pandoc not found. Downloading...")
             pypandoc.download_pandoc()
         try:
-            pypandoc.convert_text(text, to=fmt, format='markdown', outputfile=out_path)
+            pypandoc.convert_text(text_or_path, to=fmt, format='markdown', outputfile=out_path)
         except Exception as e:
             raise RuntimeError(f"Error converting to {fmt}: {e}")
     else:
@@ -99,13 +184,24 @@ def save_as_format(text, out_path, fmt):
 @app.route("/", methods=["GET", "POST"])
 def index():
     error = None
+    available_formats = sorted(list(OUTPUT_FORMATS) + ['image'])
+    selected_ext = None
     if request.method == "POST":
         uploaded_file = request.files.get('file')
         output_format = request.form.get('output_format', '').lower()
 
+        if uploaded_file and allowed_file(uploaded_file.filename):
+            selected_ext = uploaded_file.filename.rsplit('.', 1)[1].lower()
+            if selected_ext == 'pdf':
+                available_formats = ['docx', 'txt', 'image']
+            elif selected_ext == 'docx':
+                available_formats = ['txt', 'html', 'pdf']
+            else:
+                available_formats = sorted(list(OUTPUT_FORMATS) + ['image'])
+
         if not uploaded_file or not allowed_file(uploaded_file.filename):
             error = "Invalid or missing input file."
-        elif output_format not in OUTPUT_FORMATS:
+        elif output_format not in available_formats:
             error = "Invalid or unsupported output format."
         else:
             try:
@@ -119,8 +215,16 @@ def index():
                 uploaded_file.save(input_path)
                 logging.info(f"Uploaded: {input_path}")
 
-                text = extract_text(input_path, ext)
-                save_as_format(text, output_path, output_format)
+                text_or_path = extract_text(input_path, ext, output_format)
+                if output_format == 'image':
+                    # For images, show links to all extracted images
+                    image_links = []
+                    for img_path in text_or_path:
+                        rel_path = os.path.relpath(img_path, '.')
+                        image_links.append(f"/{rel_path.replace('\\', '/').replace(' ', '%20')}")
+                    return render_template("index.html", formats=available_formats, success="Images extracted!", image_links=image_links)
+                else:
+                    save_as_format(text_or_path, output_path, output_format)
 
                 @after_this_request
                 def cleanup(response):
@@ -132,13 +236,13 @@ def index():
                     return response
 
                 download_url = f"/download/{output_filename}"
-                return render_template("index.html", formats=sorted(OUTPUT_FORMATS), success="Conversion successful!", download_link=download_url)
+                return render_template("index.html", formats=available_formats, success="Conversion successful!", download_link=download_url)
 
             except Exception as e:
                 logging.exception("Conversion error:")
                 error = f"Error during conversion: {e}"
 
-    return render_template("index.html", formats=sorted(OUTPUT_FORMATS), error=error)
+    return render_template("index.html", formats=available_formats, error=error)
 
 # =======================
 # Convert Images -> PDF
@@ -188,13 +292,15 @@ def convert_images():
             pil_images[0].save(pdf_bytes, format="PDF", save_all=True, append_images=pil_images[1:])
         pdf_bytes.seek(0)
 
-        logging.info("convert-images: PDF generated, size=%d bytes", len(pdf_bytes.getbuffer()))
-
+        logging.info("convert-images: PDF generated, size=%d bytes", len(pdf_bytes.getvalue()))
+        pdf_bytes.seek(0)
         return send_file(
             pdf_bytes,
             mimetype="application/pdf",
             as_attachment=True,
-            download_name="converted.pdf"
+            download_name="converted.pdf",
+            max_age=0,
+            conditional=False
         )
 
     except Exception as e:

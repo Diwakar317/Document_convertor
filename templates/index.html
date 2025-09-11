@@ -22,6 +22,36 @@
                 {% endfor %}
             </select>
             <button type="submit">Convert</button>
+            <script>
+            // Dynamically update output formats based on file type
+            const fileInput = document.getElementById('file');
+            const formatSelect = document.getElementById('output_format');
+            const formatOptions = {
+                pdf: ['docx', 'txt', 'image'],
+                docx: ['txt', 'html', 'pdf']
+            };
+            const allFormats = [{% for fmt in formats %}'{{ fmt }}',{% endfor %}];
+
+            fileInput.addEventListener('change', function() {
+                const file = fileInput.files[0];
+                let ext = '';
+                if (file && file.name.includes('.')) {
+                    ext = file.name.split('.').pop().toLowerCase();
+                }
+                let formats = allFormats;
+                if (formatOptions[ext]) {
+                    formats = formatOptions[ext];
+                }
+                // Clear and repopulate select
+                formatSelect.innerHTML = '<option value="">Select format</option>';
+                formats.forEach(function(fmt) {
+                    const opt = document.createElement('option');
+                    opt.value = fmt;
+                    opt.textContent = fmt.toUpperCase();
+                    formatSelect.appendChild(opt);
+                });
+            });
+            </script>
         </form>
         {% if error %}
             <div class="error">{{ error }}</div>

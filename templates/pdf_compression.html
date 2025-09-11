@@ -1,29 +1,44 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PDF Compression Tool</title>
-    <link href="https://fonts.googleapis.com/css?family=Inter:400,600&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles_pdf_compression.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles-img-to-pdf.css') }}">
 </head>
 <body>
     {% include 'header.html' %}
-    <div class="container">
-        <h1>PDF Compression Tool</h1>
-        <form method="POST" action="/compress" enctype="multipart/form-data">
-            <label for="pdf_file">Choose PDF file:</label>
-            <input type="file" id="pdf_file" name="pdf_file" accept="application/pdf" required />
-
-            <label for="compression_level">Select Compression Level:</label>
-            <select id="compression_level" name="compression_level">
+    <!-- Upload panel shown initially -->
+    <div class="upload-container" id="uploadContainer">
+        <h2>PDF Compression Tool</h2>
+        <div class="drag-area" id="dragArea">
+            <button class="upload-btn" id="uploadBtn">Upload PDF</button>
+            <p>or drop a PDF on this page</p>
+            <input type="file" id="pdfInput" accept="application/pdf">
+        </div>
+        <div class="preview-list" id="previewList"></div>
+    </div>
+    <!-- Main panels shown after PDF is uploaded -->
+    <div class="main-panels" id="mainPanels" style="display:none;">
+        <!-- Preview panel: occupies 70% of screen width -->
+        <div class="preview-panel">
+            <h2 style="display:inline-block;">Preview</h2>
+            <div class="preview-list" id="panelPreviewList"></div>
+        </div>
+        <!-- Options panel: occupies 30% of screen width -->
+        <div class="options-panel" id="optionsPanel">
+            <h3>Compression Options</h3>
+            <label for="compressionLevel">Compression Level:</label>
+            <select id="compressionLevel">
                 <option value="low">Low (Largest File)</option>
                 <option value="moderate" selected>Moderate</option>
                 <option value="high">High (Smallest File)</option>
             </select>
-
-            <button type="submit">Compress PDF</button>
-        </form>
+            <!-- Compress PDF button at bottom -->
+            <button id="compressBtn" class="convert-btn" type="button">Compress PDF</button>
+        </div>
     </div>
+        <script src="{{ url_for('static', filename='pdf_compression.js') }}"></script>
 </body>
 </html>
